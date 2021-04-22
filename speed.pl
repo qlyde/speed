@@ -1,5 +1,13 @@
 #!/usr/bin/perl -w
 
+sub usage {
+    die "usage: $0 [-i] [-n] [-f <script-file> | <sed-command>] [<files>...]\n";
+}
+
+sub invalid_command {
+    die "$0: command line: invalid command\n"
+}
+
 sub do_quit {
     my ($in_ref, $addr) = @_;
     my @in = @$in_ref;
@@ -23,7 +31,7 @@ sub do_quit {
         push @ret, $in[0] if defined $in[0];
     } else {
         # address is invalid
-        die "$0: command line: invalid command\n"
+        invalid_command;
     }
     @ret;
 }
@@ -53,7 +61,7 @@ sub do_print {
         }
     } else {
         # address is invalid
-        die "$0: command line: invalid command\n"
+        invalid_command;
     }
     @ret;
 }
@@ -78,7 +86,7 @@ sub do_delete {
         # delete every line
     } else {
         # address is invalid
-        die "$0: command line: invalid command\n"
+        invalid_command;
     }
     @ret;
 }
@@ -112,39 +120,39 @@ sub do_substitute {
         }
     } else {
         # address is invalid
-        die "$0: command line: invalid command\n"
+        invalid_command;
     }
     @ret;
 }
 
-sub parse {
-    my ($arg) = @_;
+sub do_cmd {
+    my ($cmd) = @_;
     my @in = <STDIN>;
-    if ($arg =~ /q\s*$/) {
+    if ($cmd =~ /q\s*$/) {
         # quit cmd
-        $arg =~ s/q\s*$//;
-        print do_quit \@in, $arg;
-    } elsif ($arg =~ /p\s*$/) {
+        $cmd =~ s/q\s*$//;
+        print do_quit \@in, $cmd;
+    } elsif ($cmd =~ /p\s*$/) {
         # print cmd
-        $arg =~ s/p\s*$//;
-        print do_print \@in, $arg;
-    } elsif ($arg =~ /d\s*$/) {
+        $cmd =~ s/p\s*$//;
+        print do_print \@in, $cmd;
+    } elsif ($cmd =~ /d\s*$/) {
         # delete cmd
-        $arg =~ s/d\s*$//;
-        print do_delete \@in, $arg;
-    } elsif ($arg =~ /s\/.*\/.*\/\s*g?\s*$/) {
+        $cmd =~ s/d\s*$//;
+        print do_delete \@in, $cmd;
+    } elsif ($cmd =~ /s\/.*\/.*\/\s*g?\s*$/) {
         # substitute cmd
-        my ($addr, $search, $replace) = $arg =~ /^(.*)s\/(.*)\/(.*)\/\s*g?\s*$/;
-        if ($arg =~ /s\/.*\/.*\/\s*g\s*$/) {
+        my ($addr, $search, $replace) = $cmd =~ /^(.*)s\/(.*)\/(.*)\/\s*g?\s*$/;
+        if ($cmd =~ /s\/.*\/.*\/\s*g\s*$/) {
             print do_substitute \@in, $addr, $search, $replace, 1; # defined g_flag
         } else {
             print do_substitute \@in, $addr, $search, $replace; # no g_flag
         }
     } else {
         # unknown command
-        die "$0: command line: invalid command\n"
+        invalid_command;
     }
 }
 
 die unless @ARGV == 1;
-parse @ARGV;
+do_cmd @ARGV;
