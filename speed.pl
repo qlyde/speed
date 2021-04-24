@@ -1,158 +1,115 @@
 #!/usr/bin/perl -w
 
+use constant {
+    INSTR_Q => "INSTR_Q",
+    INSTR_P => "INSTR_P",
+    INSTR_D => "INSTR_D",
+    INSTR_S => "INSTR_S",
+    STATUS_NONE => "STATUS_NONE", # cycling continues as normal
+    STATUS_NEXT => "STATUS_NEXT", # immediately go to next cycle
+    STATUS_LAST => "STATUS_LAST"  # stop cycling
+};
+
 sub usage {
     die "usage: $0 [-i] [-n] [-f <script-file> | <sed-command>] [<files>...]\n";
 }
 
 sub invalid_command {
-    die "$0: command line: invalid command\n"
+    die "$0: command line: invalid command\n";
 }
 
-sub do_quit {
-    my ($in_ref, $addr) = @_;
-    my @in = @$in_ref;
-    my @ret;
-    if ($addr =~ /^\s*\/.+\/\s*$/) {
-        # address is a regex
-        $addr =~ s/\s*\/(.+)\/\s*$/$1/;
-        foreach my $line (@in) {
-            push @ret, $line;
-            last if $line =~ /$addr/;
-        }
-    } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
-        # address is a number
-        for my $i (0 .. $#in) {
-            push @ret, $in[$i];
-            last if $i == $addr - 1;
-        }
-    } elsif ($addr =~ /^\s*$/) {
-        # address is not given
-        # quit after first line
-        push @ret, $in[0] if defined $in[0];
-    } else {
-        # address is invalid
-        invalid_command;
-    }
-    @ret;
-}
-
-sub do_print {
-    my ($in_ref, $addr) = @_;
-    my @in = @$in_ref;
-    my @ret;
-    if ($addr =~ /^\s*\/.+\/\s*$/) {
-        # address is a regex
-        $addr =~ s/\s*\/(.+)\/\s*$/$1/;
-        foreach my $line (@in) {
-            push @ret, $line;
-            push @ret, $line if $line =~ /$addr/;
-        }
-    } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
-        # address is a number
-        for my $i (0 .. $#in) {
-            push @ret, $in[$i];
-            push @ret, $in[$i] if $i == $addr - 1;
-        }
-    } elsif ($addr =~ /^\s*$/) {
-        # address is not given
-        # print every line
-        foreach my $line (@in) {
-            push @ret, ($line, $line);
-        }
-    } else {
-        # address is invalid
-        invalid_command;
-    }
-    @ret;
-}
-
-sub do_delete {
-    my ($in_ref, $addr) = @_;
-    my @in = @$in_ref;
-    my @ret;
-    if ($addr =~ /^\s*\/.+\/\s*$/) {
-        # address is a regex
-        $addr =~ s/\s*\/(.+)\/\s*$/$1/;
-        foreach my $line (@in) {
-            push @ret, $line if $line !~ /$addr/;
-        }
-    } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
-        # address is a number
-        for my $i (0 .. $#in) {
-            push @ret, $in[$i] if $i != $addr - 1;
-        }
-    } elsif ($addr =~ /^\s*$/) {
-        # address is not given
-        # delete every line
-    } else {
-        # address is invalid
-        invalid_command;
-    }
-    @ret;
-}
-
-sub do_substitute {
-    my ($in_ref, $addr, $search, $replace, $g_flag) = @_;
-    my @in = @$in_ref;
-    my @ret;
-    if ($addr =~ /^\s*\/.+\/\s*$/) {
-        # address is a regex
-        $addr =~ s/\s*\/(.+)\/\s*$/$1/;
-        foreach my $line (@in) {
-            $line =~ s/$search/$replace/ if !defined $g_flag && $line =~ /$addr/;
-            $line =~ s/$search/$replace/g if defined $g_flag && $line =~ /$addr/;
-            push @ret, $line;
-        }
-    } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
-        # address is a number
-        for my $i (0 .. $#in) {
-            $in[$i] =~ s/$search/$replace/ if !defined $g_flag && $i == $addr - 1;
-            $in[$i] =~ s/$search/$replace/g if defined $g_flag && $i == $addr - 1;
-            push @ret, $in[$i];
-        }
-    } elsif ($addr =~ /^\s*$/) {
-        # address is not given
-        # substitute every line
-        foreach my $line (@in) {
-            $line =~ s/$search/$replace/ if !defined $g_flag;
-            $line =~ s/$search/$replace/g if defined $g_flag;
-            push @ret, $line;
-        }
-    } else {
-        # address is invalid
-        invalid_command;
-    }
-    @ret;
-}
-
-sub do_cmd {
-    my ($cmd) = @_;
-    my @in = <STDIN>;
+# given: a command
+# return: a tuple with the address and instruction for that command
+sub parse_cmd {
+    my $cmd = shift;
     if ($cmd =~ /q\s*$/) {
-        # quit cmd
-        $cmd =~ s/q\s*$//;
-        print do_quit \@in, $cmd;
+        my $addr = $cmd =~ s/q\s*$//r;
+        ($addr, INSTR_Q);
     } elsif ($cmd =~ /p\s*$/) {
-        # print cmd
-        $cmd =~ s/p\s*$//;
-        print do_print \@in, $cmd;
+        my $addr = $cmd =~ s/p\s*$//r;
+        ($addr, INSTR_P);
     } elsif ($cmd =~ /d\s*$/) {
-        # delete cmd
-        $cmd =~ s/d\s*$//;
-        print do_delete \@in, $cmd;
-    } elsif ($cmd =~ /s\/.*\/.*\/\s*g?\s*$/) {
-        # substitute cmd
-        my ($addr, $search, $replace) = $cmd =~ /^(.*)s\/(.*)\/(.*)\/\s*g?\s*$/;
-        if ($cmd =~ /s\/.*\/.*\/\s*g\s*$/) {
-            print do_substitute \@in, $addr, $search, $replace, 1; # defined g_flag
-        } else {
-            print do_substitute \@in, $addr, $search, $replace; # no g_flag
-        }
+        my $addr = $cmd =~ s/d\s*$//r;
+        ($addr, INSTR_D);
+    } elsif ($cmd =~ /s(.).+\1.*\1\s*g?\s*$/) {
+        my $addr = $cmd =~ s/s(.).+\1.*\1\s*g?\s*$//r;
+        ($addr, INSTR_S);
     } else {
-        # unknown command
         invalid_command;
     }
 }
 
-die unless @ARGV == 1;
-do_cmd @ARGV;
+# given: a command, instruction and a line
+# execute the command on that line
+# return: status to indicate how cycles should proceed
+sub do_cmd {
+    my ($cmd, $instr, $line_ref) = @_;
+
+    return STATUS_LAST if $instr eq INSTR_Q; # quit
+    print $$line_ref if $instr eq INSTR_P; # print
+    return STATUS_NEXT if $instr eq INSTR_D; # delete: start next cycle
+
+    # substitute: change pattern space (current line)
+    if ($instr eq INSTR_S) {
+        my ($sep, $search, $replace) = $cmd =~ /s(.)(.+)\1(.*)\1\s*g?\s*$/;
+        ($cmd =~ /s(.).+\1.*\1\s*g\s*$/) ? ($$line_ref =~ s/$search/$replace/g) : ($$line_ref =~ s/$search/$replace/);
+    }
+
+    return STATUS_NONE;
+}
+
+# given: a list of lines and a list of commands
+# execute each command on every line
+sub sed {
+    my ($lines_ref, $cmds_ref) = @_;
+
+    my @lines = @$lines_ref;
+    my @cmds = @$cmds_ref;
+
+    # sed performs a cycle on each line
+    foreach my $i (0..$#lines) {
+        my $line = $lines[$i];
+        my $status = STATUS_NONE;
+
+        # commands are executed on the line if the line matches the address
+        foreach my $cmd (@cmds) {
+            my ($addr, $instr) = parse_cmd $cmd;
+            if ($addr =~ /^\s*\/.+\/\s*$/) {
+                # addr is a regex
+                $addr =~ s/^\s*\/(.+)\/\s*$/$1/;
+                next if $line !~ /$addr/;
+            } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
+                # addr is a number
+                next if $i != $addr - 1;
+            } elsif ($addr =~ /^\s*$/) {
+                # exec command on every line
+            } else {
+                # invalid addr
+                invalid_command;
+            }
+            $status = do_cmd $cmd, $instr, \$line; # so line can be modified
+            last if $status eq STATUS_NEXT or $status eq STATUS_LAST;
+        }
+
+        next if $status eq STATUS_NEXT; # delete starts next cycle immediately
+        print $line unless exists $FLAGS{"-n"}; # print line unless option -n
+        last if $status eq STATUS_LAST; # quit: lowercase q prints THEN exits
+    }
+}
+
+# sub parse_args {
+#     my @args = @_;
+#     my %flags;
+#     foreach my $arg (@args) {
+#         if ($arg eq "-n") {
+#             $flags{"-n"} = 1;
+#         } elsif () {
+#             usage;
+#         }
+#     }
+# }
+
+usage if @ARGV == 0;
+my @lines = <STDIN>;
+my @cmds = split /;/, $ARGV[0];
+sed \@lines, \@cmds;
