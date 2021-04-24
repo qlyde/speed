@@ -76,6 +76,8 @@ sub sed {
     my $cmds_ref = shift;
     my @cmds = @$cmds_ref;
 
+    my @residual; 
+
     # sed performs a cycle on each line
     my $lineno = 0;
     while (my $line = <STDIN>) {
@@ -93,7 +95,7 @@ sub sed {
                 next if $lineno != $addr - 1;
             } elsif ($addr =~ /^\s*$/) {
                 # exec command on every line
-            } elsif ($addr =~ /^\s*$/) {
+            } elsif ($addr =~ /^\s*\$\s*$/) {
                 # TODO
             } else {
                 # invalid addr
@@ -105,7 +107,7 @@ sub sed {
 
         $lineno++;
         next if $status eq STATUS_NEXT; # delete starts next cycle immediately
-        print $line unless exists%$OPTS{n}; # print line unless option -n
+        print $line unless exists $OPTS{n}; # print line unless option -n
         last if $status eq STATUS_LAST; # quit: lowercase q prints THEN exits
     }
 }
@@ -114,12 +116,12 @@ sub sed {
     local $SIG{__WARN__} = \&usage; # suppress "Unknown option:"
     GetOptions(\%OPTS, "n", "f=s");
 }
-usage unless @ARGV > 0 || exists%$OPTS{f};
+usage unless @ARGV > 0 || exists $OPTS{f};
 
 # get cmds from file or from cmd line
 my @cmds;
-if (exists%$OPTS{f}) {
-    open my $fh, '<',%$OPTS{f} or no_such_file%$OPTS{f};
+if (exists $OPTS{f}) {
+    open my $fh, '<', $OPTS{f} or no_such_file $OPTS{f};
     @cmds = split /;|\n/, do { local $/; <$fh> };
 } else {
     @cmds = split /;|\n/, $ARGV[0];
