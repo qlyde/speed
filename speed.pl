@@ -24,6 +24,12 @@ sub invalid_command {
     exit 1;
 }
 
+sub no_such_file {
+    my $file = shift;
+    print STDERR "$0: couldn't open file $file: $!\n";
+    exit 1;
+}
+
 # given: a command
 # return: a tuple with the address and instruction for that command
 sub parse_cmd {
@@ -87,6 +93,8 @@ sub sed {
                 next if $lineno != $addr - 1;
             } elsif ($addr =~ /^\s*$/) {
                 # exec command on every line
+            } elsif ($addr =~ /^\s*$/) {
+                # TODO
             } else {
                 # invalid addr
                 invalid_command;
@@ -102,11 +110,20 @@ sub sed {
     }
 }
 
-usage unless @ARGV > 0;
 {
     local $SIG{__WARN__} = \&usage; # suppress "Unknown option:"
-    GetOptions(\%OPTS, "n");
+    GetOptions(\%OPTS, "n", "f=s");
+}
+usage unless @ARGV > 0 || exists $OPTS{f};
+
+# get cmds from file or from cmd line
+my @cmds;
+if (exists $OPTS{f}) {
+    open my $fh, '<', $OPTS{f} or no_such_file $OPTS{f};
+    @cmds = split /;|\n/, do { local $/; <$fh> };
+} else {
+    @cmds = split /;|\n/, $ARGV[0];
 }
 
-my @cmds = split /;/, $ARGV[0];
+# do speed
 sed \@cmds;
