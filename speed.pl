@@ -75,11 +75,9 @@ sub do_cmd {
 sub sed {
     my $cmds_ref = shift;
     my @cmds = @$cmds_ref;
-
-    my @residual; 
+    my @residue; # exec command 
 
     # sed performs a cycle on each line
-    my $lineno = 0;
     while (my $line = <STDIN>) {
         my $status = STATUS_NONE;
 
@@ -92,11 +90,12 @@ sub sed {
                 next if $line !~ /$addr/;
             } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
                 # addr is a number
-                next if $lineno != $addr - 1;
+                next if $. != $addr;
             } elsif ($addr =~ /^\s*$/) {
                 # exec command on every line
             } elsif ($addr =~ /^\s*\$\s*$/) {
-                # TODO
+                # exec command on last line
+
             } else {
                 # invalid addr
                 invalid_command;
@@ -105,7 +104,6 @@ sub sed {
             last if $status eq STATUS_NEXT or $status eq STATUS_LAST;
         }
 
-        $lineno++;
         next if $status eq STATUS_NEXT; # delete starts next cycle immediately
         print $line unless exists $OPTS{n}; # print line unless option -n
         last if $status eq STATUS_LAST; # quit: lowercase q prints THEN exits
