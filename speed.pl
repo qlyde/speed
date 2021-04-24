@@ -64,17 +64,15 @@ sub do_cmd {
     return STATUS_NONE;
 }
 
-# given: a list of lines and a list of commands
-# execute each command on every line
+# given: a list of commands
+# execute each command on every line of input
 sub sed {
-    my ($lines_ref, $cmds_ref) = @_;
-
-    my @lines = @$lines_ref;
+    my $cmds_ref = shift;
     my @cmds = @$cmds_ref;
 
     # sed performs a cycle on each line
-    foreach my $i (0..$#lines) {
-        my $line = $lines[$i];
+    my $lineno = 0;
+    while (my $line = <STDIN>) {
         my $status = STATUS_NONE;
 
         # commands are executed on the line if the line matches the address
@@ -86,7 +84,7 @@ sub sed {
                 next if $line !~ /$addr/;
             } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
                 # addr is a number
-                next if $i != $addr - 1;
+                next if $lineno != $addr - 1;
             } elsif ($addr =~ /^\s*$/) {
                 # exec command on every line
             } else {
@@ -97,6 +95,7 @@ sub sed {
             last if $status eq STATUS_NEXT or $status eq STATUS_LAST;
         }
 
+        $lineno++;
         next if $status eq STATUS_NEXT; # delete starts next cycle immediately
         print $line unless exists $OPTS{n}; # print line unless option -n
         last if $status eq STATUS_LAST; # quit: lowercase q prints THEN exits
@@ -109,6 +108,5 @@ usage unless @ARGV > 0;
     GetOptions(\%OPTS, "n");
 }
 
-my @lines = <STDIN>;
 my @cmds = split /;/, $ARGV[0];
-sed \@lines, \@cmds;
+sed \@cmds;
