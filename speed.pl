@@ -75,11 +75,17 @@ sub do_cmd {
 sub sed {
     my $cmds_ref = shift;
     my @cmds = @$cmds_ref;
-    my @residue; # exec command 
+    my @residual_cmds; # commands to execute after cycles
 
     # sed performs a cycle on each line
+    my $status = STATUS_NONE;
+    my $prev_line;
     while (my $line = <STDIN>) {
-        my $status = STATUS_NONE;
+        if (defined $prev_line and $status ne STATUS_NEXT) { # dont print if line got deleted
+            last if $status eq STATUS_LAST; # quit
+            print $prev_line unless exists $OPTS{n};
+        }
+        $status = STATUS_NONE;
 
         # commands are executed on the line if the line matches the address
         foreach my $cmd (@cmds) {
@@ -95,7 +101,8 @@ sub sed {
                 # exec command on every line
             } elsif ($addr =~ /^\s*\$\s*$/) {
                 # exec command on last line
-
+                push @residual_cmds, $cmd if $. == 1;
+                next;
             } else {
                 # invalid addr
                 invalid_command;
@@ -104,10 +111,16 @@ sub sed {
             last if $status eq STATUS_NEXT or $status eq STATUS_LAST;
         }
 
-        next if $status eq STATUS_NEXT; # delete starts next cycle immediately
-        print $line unless exists $OPTS{n}; # print line unless option -n
-        last if $status eq STATUS_LAST; # quit: lowercase q prints THEN exits
+        $prev_line = $line;
     }
+
+    # process last line
+    foreach my $cmd (@residual_cmds) {
+        my ($addr, $instr) = parse_cmd $cmd;
+        $status = do_cmd $cmd, $instr, \$prev_line;
+        last if $status eq STATUS_NEXT or $status eq STATUS_LAST;
+    }
+    print $prev_line if !exists $OPTS{n} && defined $prev_line && $status ne STATUS_NEXT;
 }
 
 {
@@ -121,6 +134,7 @@ my @cmds;
 if (exists $OPTS{f}) {
     open my $fh, '<', $OPTS{f} or no_such_file $OPTS{f};
     @cmds = split /;|\n/, do { local $/; <$fh> };
+    close $fh;
 } else {
     @cmds = split /;|\n/, $ARGV[0];
 }
