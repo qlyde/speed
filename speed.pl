@@ -1,21 +1,27 @@
 #!/usr/bin/perl -w
 
+use Getopt::Long;
 use constant {
-    INSTR_Q => "INSTR_Q",
-    INSTR_P => "INSTR_P",
-    INSTR_D => "INSTR_D",
-    INSTR_S => "INSTR_S",
+    INSTR_Q     => "INSTR_Q",
+    INSTR_P     => "INSTR_P",
+    INSTR_D     => "INSTR_D",
+    INSTR_S     => "INSTR_S",
     STATUS_NONE => "STATUS_NONE", # cycling continues as normal
     STATUS_NEXT => "STATUS_NEXT", # immediately go to next cycle
-    STATUS_LAST => "STATUS_LAST"  # stop cycling
+    STATUS_LAST => "STATUS_LAST", # stop cycling
 };
 
+# options
+my $OPTS;
+
 sub usage {
-    die "usage: $0 [-i] [-n] [-f <script-file> | <sed-command>] [<files>...]\n";
+    print STDERR "usage: $0 [-i] [-n] [-f <script-file> | <sed-command>] [<files>...]\n";
+    exit 1;
 }
 
 sub invalid_command {
-    die "$0: command line: invalid command\n";
+    print STDERR "$0: command line: invalid command\n";
+    exit 1;
 }
 
 # given: a command
@@ -92,24 +98,17 @@ sub sed {
         }
 
         next if $status eq STATUS_NEXT; # delete starts next cycle immediately
-        print $line unless exists $FLAGS{"-n"}; # print line unless option -n
+        print $line unless exists $OPTS{n}; # print line unless option -n
         last if $status eq STATUS_LAST; # quit: lowercase q prints THEN exits
     }
 }
 
-# sub parse_args {
-#     my @args = @_;
-#     my %flags;
-#     foreach my $arg (@args) {
-#         if ($arg eq "-n") {
-#             $flags{"-n"} = 1;
-#         } elsif () {
-#             usage;
-#         }
-#     }
-# }
+usage unless @ARGV > 0;
+{
+    local $SIG{__WARN__} = \&usage; # suppress "Unknown option:"
+    GetOptions(\%OPTS, "n");
+}
 
-usage if @ARGV == 0;
 my @lines = <STDIN>;
 my @cmds = split /;/, $ARGV[0];
 sed \@lines, \@cmds;
