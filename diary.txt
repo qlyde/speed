@@ -1,0 +1,28 @@
+Diary
+James Kroeger
+
+Thu Apr 22 10:00:00 to 10:03:51 init
+Thu Apr 22 10:03:51 to 14:52:41 finished quit, print, delete functionality - yet to do arg parsing
+Thu Apr 22 14:52:41 to 20:03:03 finished subtitute and argument parsing
+Thu Apr 22 20:03:03 to 21:20:36 refactor
+Sat Apr 24 12:30:00 to 16:57:14 huge refactor - needed to change things so that I could process multiple sed commands
+Sat Apr 24 16:57:14 to 18:39:22 added option parsing and change die to exit 1
+Sat Apr 24 18:39:22 to 18:46:07 fixed bug to handle infinite line input like `yes`
+Sat Apr 24 18:46:07 to 20:00:12 added -f command line option
+Sat Apr 24 20:00:12 to 20:03:03 fixed bug - made OPTS a hash instead of scalar
+Sat Apr 24 20:03:03 to 20:08:26 fixed syntax bugs
+Sat Apr 24 20:08:26 to 20:12:08 use $. instead of counting line number
+Sat Apr 24 20:12:08 to 21:03:41 added $ to match last line - works for infinite line files
+Sun Apr 25 12:00:00 to 14:38:08 added a lot of checking before execution, added functionality for ranges as addresses (still sort of buggy) and changed implementation of handling $ addresses to be much simpler
+Sun Apr 25 14:38:08 to 17:03:54 fixed address range bugs
+Sun Apr 25 17:03:54 to 18:12:05 added functionality for input files - finished subset 1
+Sun Apr 25 18:12:05 to 19:18:25 some refactoring and adding comments
+Sun Apr 25 19:18:25 to 22:24:24 fixed a bug with range addresses
+Sun Apr 25 22:24:24 to 22:32:29 fixed range address bug again
+Sun Apr 25 22:32:29 to 22:57:44 fixed another range address bug
+Sun Apr 25 22:57:44 to 23:06:40 handled an edge case where end<=start in range addresses
+Mon Apr 26 23:06:40 to 01:13:56 bugfix with trailing newline
+Mon Apr 26 01:13:56 to 01:38:36 added functionality for using $ in an address range
+Mon Apr 26 01:38:36 to 01:51:43 finished 7 tests
+Mon Apr 26 07:00:00 to 07:29:35 finished last 3 tests
+Mon Apr 26 07:29:35 to 07:35:24 fixed mktemp bug in test 8
