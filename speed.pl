@@ -191,7 +191,13 @@ sub sed {
                     $in_range{$i} = 0;
                     $end_flag = 1;
                 }
-                next unless $in_range{$i} or $end_flag or ($start_lineno <= $lineno && $lineno <= $end_lineno);
+
+                # check if in between
+                my $is_between = 0;
+                $is_between = 1 if defined $start_lineno && defined $end_lineno && $start_lineno <= $lineno && $lineno < $end_lineno;
+                $in_range{$i} = 1 if $is_between;
+
+                next unless $in_range{$i} or $end_flag;
             }
 
             # execute command
