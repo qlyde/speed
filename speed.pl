@@ -136,8 +136,6 @@ sub sed {
     my @cmds = @$cmds_ref;
 
     my %in_range; # one range per command
-    my %is_start_of_range;
-    my %is_end_of_range;
 
     # sed performs a cycle on each line
     while (my $line = <STDIN>) {
@@ -163,29 +161,36 @@ sub sed {
                 my ($start, $end) = ($1, $2);
 
                 # check for start
-                $is_start_of_range{$i} = 0;
+                my $is_start = 0;
                 if ($start =~ /^\s*\/[^,]+\/\s*$/) {
                     $start =~ s/^\s*\/([^,]+)\/\s*$/$1/;
-                    $in_range{$i} = $is_start_of_range{$i} = 1 if $line =~ /$start/;
+                    $is_start = 1 if $line =~ /$start/;
                 } else {
-                    $in_range{$i} = $is_start_of_range{$i} = 1 if $. == $start;
+                    $is_start = 1 if $. == $start;
                 }
 
                 # check for end
-                $is_end_of_range{$i} = 0;
+                my $is_end = 0;
+                my $past_end = 0; # for if start matches, end is a number and we are past that line
                 if ($end =~ /^\s*\/[^,]+\/\s*$/) {
                     $end =~ s/^\s*\/([^,]+)\/\s*$/$1/;
-                    if ($line =~ /$end/ && $in_range{$i}) { $in_range{$i} = 0; $is_end_of_range{$i} = 1; }
+                    $is_end = 1 if $line =~ /$end/;
                 } else {
-                    if ($. >= $end && $in_range{$i}) {
-                        $in_range{$i} = 0;
-                        $is_end_of_range{$i} = ($. == $end) ? 1 : 0; # not end if $. > $end
-                    }
+                    $is_end = 1 if $. >= $end;
+                    $past_end = 1 if $. > $end;
                 }
 
                 # check if in range
-                $in_range{$i} = 1 if $is_start_of_range{$i}; # in case start also matches end
-                next unless $in_range{$i} or $is_end_of_range{$i};
+                my $end_flag = 0;
+                if ($is_start && !$in_range{$i} && $past_end) {
+                    $end_flag = 1; # don't begin the range since we are past the line
+                } elsif ($is_start && !$in_range{$i}) {
+                    $in_range{$i} = 1;
+                } elsif ($is_end && $in_range{$i}) {
+                    $in_range{$i} = 0;
+                    $end_flag = 1;
+                }
+                next unless $in_range{$i} or $end_flag;
             }
 
             # execute command
