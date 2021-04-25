@@ -78,7 +78,7 @@ sub check_cmd {
         $addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/ || # address is a positive integer
         $addr =~ /^\s*$/ || # address is nothing
         $addr =~ /^\s*\$\s*$/ || # address is $ (last line)
-        ($addr =~ /^\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*,\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*$/ &&
+        ($addr =~ /^\s*([0-9]*[1-9][0-9]*|\/[^,]+\/|\$)\s*,\s*([0-9]*[1-9][0-9]*|\/[^,]+\/|\$)\s*$/ &&
             $instr ne INSTR_QUIT) # address is a range and instruction is p,d or s
     );
 
@@ -155,7 +155,7 @@ sub sed {
             } elsif ($addr =~ /^\s*\$\s*$/) {
                 # exec command on last line
                 next unless eof and @handles == 0; # last line of last file
-            } elsif ($addr =~ /^\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*,\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*$/) {
+            } elsif ($addr =~ /^\s*([0-9]*[1-9][0-9]*|\/[^,]+\/|\$)\s*,\s*([0-9]*[1-9][0-9]*|\/[^,]+\/|\$)\s*$/) {
                 my ($start, $end) = ($1, $2);
 
                 # check for start
@@ -163,7 +163,7 @@ sub sed {
                 if ($start =~ /^\s*\/[^,]+\/\s*$/) {
                     my $start_regex = $start =~ s/^\s*\/([^,]+)\/\s*$/$1/r;
                     $is_start = 1 if $line =~ /$start_regex/;
-                } else {
+                } elsif ($start =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
                     $is_start = 1 if $lineno == $start;
                 }
 
@@ -173,7 +173,7 @@ sub sed {
                 if ($end =~ /^\s*\/[^,]+\/\s*$/) {
                     my $end_regex = $end =~ s/^\s*\/([^,]+)\/\s*$/$1/r;
                     $is_end = 1 if $line =~ /$end_regex/;
-                } else {
+                } elsif ($end =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
                     $is_end = 1 if $lineno >= $end;
                     $past_end = 1 if $lineno > $end;
                 }
@@ -184,7 +184,7 @@ sub sed {
                     $end_flag = 1; # don't begin the range since we are past the line
                 } elsif ($is_start && !$in_range{$i}) {
                     $in_range{$i} = 1;
-                } elsif ($is_end && $in_range{$i}) {
+                } elsif ($is_end && $in_range{$i} && $end !~ /^\s*\$\s*$/) { # never end range if end is $
                     $in_range{$i} = 0;
                     $end_flag = 1;
                 }
@@ -195,6 +195,13 @@ sub sed {
                     $is_between = 1 if $end <= $start && $start == $lineno; # edge case
                     $in_range{$i} = $is_between;
                     $end_flag = 0 if !$is_between;
+                }
+
+                # check if start is $
+                if ($start =~ /^\s*\$\s*$/) {
+                    # only exec cmd if last line no matter what end is
+                    $end_flag = 0;
+                    $in_range{$i} = (eof and @handles == 0) ? 1 : 0;
                 }
 
                 next unless $in_range{$i} or $end_flag;
