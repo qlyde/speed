@@ -102,14 +102,6 @@ sub check_cmd_file {
     }
 }
 
-# check input files exist
-sub check_input_files {
-    shift if !exists $OPTS{f}; # get rid of sed script if -f not specified
-    foreach my $file (@_) {
-        error if ! -f $file;
-    }
-}
-
 # given: a command, instruction and a line
 # execute the command on that line
 # return: status to indicate how cycles should proceed
@@ -132,13 +124,16 @@ sub do_cmd {
 # given: a list of commands
 # execute each command on every line of input
 sub sed {
-    my $cmds_ref = shift;
+    my ($cmds_ref, $handles_ref) = @_;
     my @cmds = @$cmds_ref;
+    my @handles = @$handles_ref;
 
     my %in_range; # one range per command
 
     # sed performs a cycle on each line
-    while (my $line = <STDIN>) {
+    my $lineno = 1; # use instead of $. for multiple files
+    my $handle = (@handles == 0) ? STDIN : shift @handles; # use STDIN if no files
+    while (my $line = <$handle>) {
         my $status = STATUS_NONE;
 
         # commands are executed on the line if the line matches the address
@@ -151,12 +146,12 @@ sub sed {
                 next if $line !~ /$addr/;
             } elsif ($addr =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
                 # addr is a number
-                next if $. != $addr;
+                next if $lineno != $addr;
             } elsif ($addr =~ /^\s*$/) {
                 # exec command on every line
             } elsif ($addr =~ /^\s*\$\s*$/) {
                 # exec command on last line
-                next unless eof;
+                next unless eof and @handles == 0;
             } elsif ($addr =~ /^\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*,\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*$/) {
                 my ($start, $end) = ($1, $2);
 
@@ -166,7 +161,7 @@ sub sed {
                     $start =~ s/^\s*\/([^,]+)\/\s*$/$1/;
                     $is_start = 1 if $line =~ /$start/;
                 } else {
-                    $is_start = 1 if $. == $start;
+                    $is_start = 1 if $lineno == $start;
                 }
 
                 # check for end
@@ -176,8 +171,8 @@ sub sed {
                     $end =~ s/^\s*\/([^,]+)\/\s*$/$1/;
                     $is_end = 1 if $line =~ /$end/;
                 } else {
-                    $is_end = 1 if $. >= $end;
-                    $past_end = 1 if $. > $end;
+                    $is_end = 1 if $lineno >= $end;
+                    $past_end = 1 if $lineno > $end;
                 }
 
                 # check if in range
@@ -197,6 +192,9 @@ sub sed {
             $status = do_cmd $cmd, $instr, \$line; # so line can be modified
             last if $status eq STATUS_NEXT or $status eq STATUS_LAST;
         }
+
+        $lineno++;
+        $handle = shift @handles if @handles != 0 && eof; # go to next file
 
         next if $status eq STATUS_NEXT; # delete starts next cycle immediately
         print $line unless exists $OPTS{n}; # print line unless option -n
@@ -229,8 +227,22 @@ if (exists $OPTS{f}) {
     @cmds = split /;|\n/, $ARGV[0];
 }
 
-check_input_files @ARGV if (@ARGV > 1 && !exists $OPTS{f}) || (@ARGV > 0 && exists $OPTS{f});
+# check cmdline commands
 check_cmd_cmdline @cmds if !exists $OPTS{f};
 
+# get files if they are given
+shift @ARGV if !exists $OPTS{f}; # get rid of the script
+my @handles;
+foreach my $file (@ARGV) {
+    error if ! -f $file;
+    open my $fh, '<', $file or die;
+    push @handles, $fh;
+}
+
 # do speed
-sed \@cmds;
+sed \@cmds, \@handles; # pass in input files
+
+# close files
+foreach my $handle (@handles) {
+    close $handle;
+}
