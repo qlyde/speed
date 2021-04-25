@@ -1,4 +1,5 @@
 #!/usr/bin/perl -w
+# James Kroeger (z5282841)
 
 use Getopt::Long;
 use constant {
