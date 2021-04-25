@@ -111,7 +111,7 @@ sub do_cmd {
     my ($cmd, $instr, $line_ref) = @_;
 
     return STATUS_LAST if $instr eq INSTR_QUIT; # quit
-    print $$line_ref if $instr eq INSTR_PRINT; # print
+    print $$line_ref . "\n" if $instr eq INSTR_PRINT; # print
     return STATUS_NEXT if $instr eq INSTR_DELETE; # delete: start next cycle
 
     # substitute: change pattern space (current line)
@@ -136,6 +136,7 @@ sub sed {
     my $lineno = 1; # use instead of $. for multiple files
     my $handle = (@handles == 0) ? STDIN : shift @handles; # use STDIN if no files
     while (my $line = <$handle>) {
+        chomp $line;
         my $status = STATUS_NONE;
 
         # commands are executed on the line if the line matches the address
@@ -208,7 +209,7 @@ sub sed {
         $handle = shift @handles if @handles != 0 && eof; # go to next file
 
         next if $status eq STATUS_NEXT; # delete starts next cycle immediately
-        print $line unless exists $OPTS{n}; # print line unless option -n
+        print $line . "\n" unless exists $OPTS{n}; # print line unless option -n
         last if $status eq STATUS_LAST; # quit: lowercase q prints THEN exits
     }
 }
