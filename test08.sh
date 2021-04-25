@@ -5,16 +5,10 @@ failed() { echo "$0: $@" && exit 1; }
 passed() { echo "all tests passed" && exit 0; }
 
 CMDS=$(mktemp cmdfile.XXXXXXXXXX)
-trap 'rm -f "$CMDS"' INT TERM EXIT
-
 INP1=$(mktemp input.XXXXXXXXXX)
-trap 'rm -f "$INP1"' INT TERM EXIT
-
 INP2=$(mktemp input.XXXXXXXXXX)
-trap 'rm -f "$INP2"' INT TERM EXIT
-
 INP3=$(mktemp input.XXXXXXXXXX)
-trap 'rm -f "$INP3"' INT TERM EXIT
+trap 'rm -f "$CMDS" "$INP1" "$INP2" "$INP3"' INT TERM EXIT
 
 # make commands file
 echo ' /.[02468]/,$ p ; /[13579]/ s_._k_ g ; $ d ; $ q ' > $CMDS
