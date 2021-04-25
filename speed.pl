@@ -159,22 +159,26 @@ sub sed {
 
                 # check for start
                 my $is_start = 0;
+                my $start_lineno;
                 if ($start =~ /^\s*\/[^,]+\/\s*$/) {
                     $start =~ s/^\s*\/([^,]+)\/\s*$/$1/;
                     $is_start = 1 if $line =~ /$start/;
                 } else {
                     $is_start = 1 if $lineno == $start;
+                    $start_lineno = $lineno;
                 }
 
                 # check for end
                 my $is_end = 0;
                 my $past_end = 0; # for if start matches, end is a number and we are past that line
+                my $end_lineno;
                 if ($end =~ /^\s*\/[^,]+\/\s*$/) {
                     $end =~ s/^\s*\/([^,]+)\/\s*$/$1/;
                     $is_end = 1 if $line =~ /$end/;
                 } else {
                     $is_end = 1 if $lineno >= $end;
                     $past_end = 1 if $lineno > $end;
+                    $end_lineno = $lineno;
                 }
 
                 # check if in range
@@ -187,7 +191,7 @@ sub sed {
                     $in_range{$i} = 0;
                     $end_flag = 1;
                 }
-                next unless $in_range{$i} or $end_flag;
+                next unless $in_range{$i} or $end_flag or ($start_lineno <= $lineno && $lineno <= $end_lineno);
             }
 
             # execute command
