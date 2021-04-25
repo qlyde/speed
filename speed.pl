@@ -43,7 +43,7 @@ sub error {
 }
 
 # given: a command
-# return: a tuple with the address and instruction for that command or undef for invalid commands
+# return: a tuple with the address and instruction for that command or () for invalid commands
 sub parse_cmd {
     my $cmd = shift;
     $cmd =~ s/#[^\n]*//g; # remove comments
@@ -92,14 +92,16 @@ sub check_cmd_cmdline {
     }
 }
 
-# check command file has valid commands (specified by -f option)
+# check command file exists and has valid commands (specified by -f option)
 sub check_cmd_file {
-    my ($filename, $fh) = @_;
+    my $filename = shift;
+    open my $fh, '<', $filename or no_such_file $filename;
     while (my $line = <$fh>) {
         foreach my $cmd (split /;/, $line) {
             invalid_command_file $filename, $. if check_cmd $cmd;
         }
     }
+    close $fh;
 }
 
 # given: a command, instruction and a line
@@ -151,7 +153,7 @@ sub sed {
                 # exec command on every line
             } elsif ($addr =~ /^\s*\$\s*$/) {
                 # exec command on last line
-                next unless eof and @handles == 0;
+                next unless eof and @handles == 0; # last line of last file
             } elsif ($addr =~ /^\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*,\s*([0-9]*[1-9][0-9]*|\/[^,]+\/)\s*$/) {
                 my ($start, $end) = ($1, $2);
 
@@ -176,7 +178,7 @@ sub sed {
                 }
 
                 # check if in range
-                my $end_flag = 0;
+                my $end_flag = 0; # so we can exec cmd on last line in inclusive range
                 if ($is_start && !$in_range{$i} && $past_end) {
                     $end_flag = 1; # don't begin the range since we are past the line
                 } elsif ($is_start && !$in_range{$i}) {
@@ -213,17 +215,14 @@ usage unless @ARGV > 0 || exists $OPTS{f};
 # get cmds from file or from cmd line
 my @cmds;
 if (exists $OPTS{f}) {
+    check_cmd_file $OPTS{f};
     open my $fh, '<', $OPTS{f} or no_such_file $OPTS{f};
-    check_cmd_file $OPTS{f}, $fh; # check command file has valid commands
-    close $fh;
-
-    open $fh, '<', $OPTS{f};
     my $arg = do { local $/; <$fh> }; # read whole file as a single string
     $arg =~ s/#[^\n]*//g; # remove comments
     @cmds = split /;|\n/, $arg;
     close $fh;
 } else {
-    $ARGV[0] =~ s/#[^\n]*//g;
+    $ARGV[0] =~ s/#[^\n]*//g; # remove comments
     @cmds = split /;|\n/, $ARGV[0];
 }
 
