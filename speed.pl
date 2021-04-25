@@ -191,6 +191,7 @@ sub sed {
                 # check if in between
                 if ($start =~ /^\s*[0-9]*[1-9][0-9]*\s*$/ && $end =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
                     my $is_between = ($start <= $lineno && $lineno <= $end) ? 1 : 0;
+                    $is_between = 1 if $end <= $start && $start == $lineno; # edge case
                     $in_range{$i} = $is_between;
                     $end_flag = 0 if !$is_between;
                 }
