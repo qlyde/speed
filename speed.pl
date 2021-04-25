@@ -159,26 +159,22 @@ sub sed {
 
                 # check for start
                 my $is_start = 0;
-                my $start_lineno;
                 if ($start =~ /^\s*\/[^,]+\/\s*$/) {
-                    $start =~ s/^\s*\/([^,]+)\/\s*$/$1/;
-                    $is_start = 1 if $line =~ /$start/;
+                    my $start_regex = $start =~ s/^\s*\/([^,]+)\/\s*$/$1/r;
+                    $is_start = 1 if $line =~ /$start_regex/;
                 } else {
                     $is_start = 1 if $lineno == $start;
-                    $start_lineno = $lineno;
                 }
 
                 # check for end
                 my $is_end = 0;
                 my $past_end = 0; # for if start matches, end is a number and we are past that line
-                my $end_lineno;
                 if ($end =~ /^\s*\/[^,]+\/\s*$/) {
-                    $end =~ s/^\s*\/([^,]+)\/\s*$/$1/;
-                    $is_end = 1 if $line =~ /$end/;
+                    my $end_regex = $end =~ s/^\s*\/([^,]+)\/\s*$/$1/r;
+                    $is_end = 1 if $line =~ /$end_regex/;
                 } else {
                     $is_end = 1 if $lineno >= $end;
                     $past_end = 1 if $lineno > $end;
-                    $end_lineno = $lineno;
                 }
 
                 # check if in range
@@ -193,9 +189,11 @@ sub sed {
                 }
 
                 # check if in between
-                my $is_between = 0;
-                $is_between = 1 if defined $start_lineno && defined $end_lineno && $start_lineno <= $lineno && $lineno < $end_lineno;
-                $in_range{$i} = 1 if $is_between;
+                if ($start =~ /^\s*[0-9]*[1-9][0-9]*\s*$/ && $end =~ /^\s*[0-9]*[1-9][0-9]*\s*$/) {
+                    my $is_between = ($start <= $lineno && $lineno <= $end) ? 1 : 0;
+                    $in_range{$i} = $is_between;
+                    $end_flag = 0 if !$is_between;
+                }
 
                 next unless $in_range{$i} or $end_flag;
             }
