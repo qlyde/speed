@@ -28,7 +28,7 @@ out=$(cat speed.pl | ./speed.pl '3d
 3,5  p')
 exp=$(cat speed.pl | 2041 speed '3d
 3,5  p')
-test "$out" = "$exp" || failed "test 3 failed: incorrect output: expected '$exp', got '$out'"
+test "$out" = "$exp" || failed "test 4 failed: incorrect output: expected '$exp', got '$out'"
 echo "test 4 passed"
 
 out=$(echo "hello
